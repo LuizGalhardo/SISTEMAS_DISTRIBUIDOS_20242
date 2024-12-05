@@ -1,4 +1,6 @@
-Model\CaixeiroViajanteParalelo.class
-Model\CaixeiroViajante.class
-Model\CVDistribuido.class
-Model\CVSequencial.class
+Distribuido\TSPServer.class
+Sequencial_Paralelo\CaixeiroViajanteParalelo.class
+Distribuido\TSPService.class
+Sequencial_Paralelo\CVSequencial.class
+Distribuido\TSPClient.class
+Sequencial_Paralelo\CaixeiroViajante.class
