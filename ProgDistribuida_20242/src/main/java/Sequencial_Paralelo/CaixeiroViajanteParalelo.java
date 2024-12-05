@@ -1,9 +1,5 @@
 package Sequencial_Paralelo;
 
-/**
- * Solução para o Problema do Caixeiro Viajante usando Programação Dinâmica.
- */
-
 import java.util.Arrays;
 
 public class CaixeiroViajanteParalelo {
@@ -13,31 +9,59 @@ public class CaixeiroViajanteParalelo {
     private final int[][] caminhoReconstruido;
     private static final double INFINITO = Double.POSITIVE_INFINITY;
 
-    // Construtor que inicializa as estruturas de dados
     public CaixeiroViajanteParalelo(double[][] matrizDistancias) {
         this.numCidades = matrizDistancias.length;
         this.matrizDistancias = matrizDistancias;
         this.dp = new double[1 << numCidades][numCidades];
         this.caminhoReconstruido = new int[1 << numCidades][numCidades];
 
-        // Inicializa todas as distâncias como infinito
         for (double[] linha : dp) {
             Arrays.fill(linha, INFINITO);
         }
     }
 
-    // Resolve o problema do Caixeiro Viajante e retorna o custo mínimo
     public double resolver() {
         dp[1][0] = 0; // Cidade inicial
 
-        // Preenchimento da tabela DP
+        // Criação e execução das threads
+        Thread[] threads = new Thread[(1 << numCidades)];
         for (int mascara = 1; mascara < (1 << numCidades); mascara++) {
-            for (int u = 0; u < numCidades; u++) {
-                if ((mascara & (1 << u)) != 0) { // Verifica se a cidade 'u' está no conjunto atual
-                    for (int v = 0; v < numCidades; v++) {
-                        if ((mascara & (1 << v)) == 0) { // Verifica se a cidade 'v' ainda não foi visitada
-                            double novaDistancia = dp[mascara][u] + matrizDistancias[u][v];
-                            int novaMascara = mascara | (1 << v);
+            final int mascaraAtual = mascara; // Variável final para uso na thread
+            threads[mascara] = new Thread(() -> preencherDP(mascaraAtual));
+            threads[mascara].start(); // Inicia a thread
+        }
+
+        // Espera todas as threads terminarem
+        for (int mascara = 1; mascara < (1 << numCidades); mascara++) {
+            try {
+                threads[mascara].join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        double custoMinimo = INFINITO;
+        int mascaraFinal = (1 << numCidades) - 1;
+
+        for (int i = 1; i < numCidades; i++) {
+            double custoAtual = dp[mascaraFinal][i] + matrizDistancias[i][0];
+            if (custoAtual < custoMinimo) {
+                custoMinimo = custoAtual;
+            }
+        }
+
+        return custoMinimo;
+    }
+
+    private void preencherDP(int mascara) {
+        for (int u = 0; u < numCidades; u++) {
+            if ((mascara & (1 << u)) != 0) { // Verifica se a cidade 'u' está no conjunto
+                for (int v = 0; v < numCidades; v++) {
+                    if ((mascara & (1 << v)) == 0) { // Verifica se a cidade 'v' ainda não foi visitada
+                        double novaDistancia = dp[mascara][u] + matrizDistancias[u][v];
+                        int novaMascara = mascara | (1 << v);
+
+                        synchronized (dp) { // Sincroniza para evitar condições de corrida
                             if (novaDistancia < dp[novaMascara][v]) {
                                 dp[novaMascara][v] = novaDistancia;
                                 caminhoReconstruido[novaMascara][v] = u;
@@ -47,33 +71,11 @@ public class CaixeiroViajanteParalelo {
                 }
             }
         }
-
-        // Calcula o custo mínimo do ciclo completo
-        double custoMinimo = INFINITO;
-        int ultimoVisitado = -1;
-        int mascaraFinal = (1 << numCidades) - 1;
-        for (int i = 1; i < numCidades; i++) {
-            double custoAtual = dp[mascaraFinal][i] + matrizDistancias[i][0];
-            if (custoAtual < custoMinimo) {
-                custoMinimo = custoAtual;
-                ultimoVisitado = i;
-            }
-        }
-
-        return custoMinimo;
     }
 
-    // Reconstrói e exibe o caminho ótimo
     public void imprimirCaminho() {
         int mascara = (1 << numCidades) - 1;
         int cidadeAtual = 0;
-
-        for (int i = 1; i < numCidades; i++) {
-            if (dp[mascara][i] + matrizDistancias[i][0] == dp[mascara | (1 << i)][0]) {
-                cidadeAtual = i;
-                break;
-            }
-        }
 
         int[] caminhoOtimo = new int[numCidades];
         for (int i = numCidades - 1; i >= 0; i--) {
